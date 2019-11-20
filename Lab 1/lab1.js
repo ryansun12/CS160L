@@ -5,7 +5,7 @@ var c = document.getElementById("glcanvas"); //get Canvas element
 var context = c.getContext("2d");
 
 $(c).mousedown(function(event) {  //JQuery to track left or right clicks and adds coordinates to arrays
-    switch (event.which) {
+    switch (event.which) { // switch statement for each mouse click event
         case 1: //Left click
             console.log('Left Mouse Click');
             //check whether a right click happened on same coordinate, if so, clear it
@@ -18,7 +18,7 @@ $(c).mousedown(function(event) {  //JQuery to track left or right clicks and add
             context.fillStyle = "#FF0000"; //Draw red circle with radius 10
             context.beginPath();
             context.arc(event.clientX, event.clientY, 10, 0, 2*Math.PI);
-            context.fill(); 
+            context.fill(); // bruh 
             break;
         case 3: //Right click
             console.log('Right Mouse Click');

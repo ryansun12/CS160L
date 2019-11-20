@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Program 4</title>
+  </head>
+
+  <body onload="main()">
+    <!-- Canvas-->
+    <div class ="flex" onscroll="scale()">
+      <canvas id="glcanvas" width="700px" height="700px"></canvas>
+      <div class="container">
+        <button class="button" onclick="toggleCamera()">
+          Toggle Camera 
+        </button>
+        <p id="mode">Eye Point: (0, 0, 1)</p> 
+        <button class="button" onclick="toggleNormal()">
+          Toggle Normal Vectors 
+        </button>
+        <p id="onoff">Normal Vectors Off</p> 
+        <button class="button" onclick="toggleMode()">
+          Toggle Render Mode
+        </button>
+        <p id="render">Flat</p> 
+        <button class="button" onclick="toggleProjection()">
+          Toggle Projection
+        </button>
+        <p id="proj">Orthographic</p> 
+        <div class="name">
+          Ryan Sun <br>
+          ryjsun@ucsc.edu <br>
+          Lab 4
+        </div> <br> 
+        <button class="button" onclick="deletePrevTree()">
+          Delete previous tree
+        </button>
+      </div>
+    </div>
+    <div class="container2">
+      <div class="load"> Load: <input type="file" id="file"> </div> <br>
+      <button class="save" onclick="save()">Save</button>
+    </div>
+
+  </body>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+  <script src="prog4.js"></script>
+  <script src="../lib/webgl-debug.js"></script> 
+  <script src="../lib/webgl-utils.js"></script> 
+  <script src="../lib/cuon-utils.js"></script> 
+  <script src="../lib/cuon-matrix.js"></script>
+  <script src="trees1.js"></script>
+
+</html>
+
+<style>
+.flex{
+  display:flex;
+}
+.name {
+  margin-top: 5em;
+  margin-left: 2em;
+  font-family:times;
+}
+#glcanvas{
+  border: 1px solid #000000; 
+}
+.button{ 
+  margin-left: 2em;
+  margin-top: 0.5em;
+  color: black;
+  background: cyan;
+  padding: 10px;
+  font-size: 15px;
+  -webkit-appearance: none;
+  transition:all 0.3s;
+  border-radius: 5px 5px 5px 5px;
+}
+.button:hover, .save:hover{
+  color: cyan;
+  background: black;
+}
+.button:active, .save:active{
+  transform:translate(5px, 5px);
+}
+.button:focus, .save:focus{
+  outline: none;
+}
+#onoff, #render, #mode, #proj{
+  margin:2em;
+  font-size:17px;
+}
+.save{
+  background:cyan;
+  border-radius:10px 10px 10px 10px;
+  -webkit-appearance: none;
+  padding:10px;
+  color: black;
+  font-size:15px;
+  position:relative;
+  left: -120px;
+}
+.container2{
+  position:absolute;
+  left: 350px;
+  text-align: center;
+}
+.load {
+  position:relative;
+  left: -63px;
+  
+}
+</style>
