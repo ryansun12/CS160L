@@ -2,31 +2,54 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Prorgam 4</title>
+    <title>Program 4</title>
   </head>
 
   <body>
     Ryan Sun <br>
     ryjsun@ucsc.edu <br>
     Prorgam 4 <br>
-    11/18/2019
+    11/22/2019
     <p> 
-    
+    This program adds three new features while maintaining all the previous ones. <br>
+    1. Zooming in and out with the scroll wheel when nothing (sphere or trees) is selected. This adjusts the setPerspective FOV value. <br>
+    2. Camera panning when nothing is selected. Click on any blank part of the canvas and drag in the direction you want to pan to. <br>
+    3. Camera movement in view direction. Only works in perspective view for obvious reasons. Click the middle mouse button AND scroll up or down to move the camera in the positive or negative view direction. <br>
     </p> 
     <a href="./driver.html">Link to driver.html</a>
 
     <h4> Screenshots:</h4>
       <div class="item">
         <img class="pic" src="ss1.png"/>
-        <span class="caption">Sphere light on</span>
+        <span class="caption">default side, perspective view</span>
+      </div>
+      <div class="item">
+        <img class="pic" src="ss2.png"/>
+        <span class="caption">zoom in and out with scrollwheel, changing FOV</span>
+      </div> <br>
+      <div class="item">
+        <img class="pic" src="ss3.png"/>
+        <span class="caption">default side, perspective view</span>
+      </div>
+      <div class="item">
+        <img class="pic" src="ss4.png"/>
+        <span class="caption">camera movement with middle button AND scrollwheel</span>
       </div>
       <div class="item">
         <img class="pic" src="ss5.png"/>
-        <span class="caption">Sphere light on with multiple trees</span>
-      </div>
+        <span class="caption">more camera movement towards view direction </span>
+      </div><br>
       <div class="item">
         <img class="pic" src="ss6.png"/>
-        <span class="caption">Sphere light off</span>
+        <span class="caption">Top View, no panning</span>
+      </div>
+      <div class="item">
+        <img class="pic" src="ss7.png"/>
+        <span class="caption">Camera panning, dragged to the left</span>
+      </div>
+      <div class="item">
+        <img class="pic" src="ss8.png"/>
+        <span class="caption">Camera panning, dragged upwards</span>
       </div>
 
   </body>
@@ -34,19 +57,16 @@
 </html>
 
 <style>
-.pic {
-  max-width:500px;
-}
 
 .item {
     vertical-align: top;
     display: inline-block;
     text-align: center;
-    width: 500px;
+    width: 400px;
 }
 img {
-    width: 500px;
-    height: 500px;
+    width: 400px;
+    height: 400px;
     background-color: grey;
 }
 .caption {

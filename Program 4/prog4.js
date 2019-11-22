@@ -1,25 +1,29 @@
 var c = document.getElementById("glcanvas"); //get Canvas element
 var gl = c.getContext('webgl', {preserveDrawingBuffer: true});
-var clicks = []; //array of arrays of mouse click coordinates
-var colors = []; //array tracking colors of corresponding mouse clicks
-var indices = []; // setup indices for the triangles
+var clicks = []; //array of mouse click coordinates
+var colors = []; //array tracking colors 
+var indices = []; // indices for the cylinders
 var selected = []; //array to track selected tree;
 var translated = []; //array to store translation values;
 var rotated = []; //array to store rotation values
-var scale = [];
-
-window.addEventListener("contextmenu", function(e) {
-    e.preventDefault();
-  }, false);
-
+var scale = []; //store scale values
+var eyeX = 0, eyeY = 0, eyeZ = 150;
 var wire = 0; // boolean vars to track toggle buttons
-var temp = false;
-var proj = false;
+var temp = false; //normal button
+var proj = false; // projection button
 var Lx = 0, Ly = -100, Lz = 100; // Light position initial
 var S = 1.0; //scale factor
 var prev = -1; // track previous selected index
 var sphereSelected = false; //track the sphere
-var bluelight = true;
+var bluelight = true; //sphere on or off
+var zoom = 0; //zoom factor
+var positions = []; // sphere positions
+var indices2 = []; //sphere indices
+var movementY = 0;
+var movementZ = 0;
+window.addEventListener("contextmenu", function(e) {
+    e.preventDefault();
+  }, false);
 
 // Vertex shader program
 var VSHADER_SOURCE =
@@ -98,6 +102,40 @@ function main() {
     for (var i = 0; i < 72; i += 3) {
         indices.push(i, i+1, i+2);
     }
+    var SPHERE_DIV = 13;
+    var i, ai, si, ci;
+    var j, aj, sj, cj;
+    var p1, p2;
+    // Generate coordinates
+    for (j = 0; j <= SPHERE_DIV; j++) {
+        aj = j * Math.PI / SPHERE_DIV;
+        sj = Math.sin(aj);
+        cj = Math.cos(aj);
+        for (i = 0; i <= SPHERE_DIV; i++) {
+            ai = i * 2 * Math.PI / SPHERE_DIV;
+            si = Math.sin(ai);
+            ci = Math.cos(ai);
+
+            positions.push(si * sj);  // X
+            positions.push(cj);   // Y
+            positions.push(ci * sj);  // Z
+        }
+    }
+    // Generate indices
+    for (j = 0; j < SPHERE_DIV; j++) {
+        for (i = 0; i < SPHERE_DIV; i++) {
+            p1 = j * (SPHERE_DIV+1) + i;
+            p2 = p1 + (SPHERE_DIV+1);
+
+            indices2.push(p1);
+            indices2.push(p2);
+            indices2.push(p1 + 1);
+
+            indices2.push(p1 + 1);
+            indices2.push(p2);
+            indices2.push(p2 + 1);
+        }
+    }
     if (!gl){
         console.log("Failed to get context for WebGL");
     }
@@ -118,12 +156,11 @@ function main() {
     var lightDirection = new Vector3([1.0,1.0,1.0]);
     lightDirection.normalize();     // Normalize
     gl.uniform3fv(u_LightDirection, lightDirection.elements);
-
     gl.uniform3f(u_LightPosition, Lx,Ly,Lz);
 
     // Set the matrix to be used for to set the camera view
     var viewMatrix = new Matrix4();
-    viewMatrix.setLookAt(0,0,300,0,0,0,0,1,0);
+    viewMatrix.setLookAt(eyeX,eyeY,eyeZ,eyeX,eyeY,0,0,1,0);
     // Set the view matrix
     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
     var projMatrix = new Matrix4();
@@ -132,28 +169,26 @@ function main() {
     gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
     var Ks = gl.getUniformLocation(gl.program, 'Ks');
     gl.uniform3f(Ks, 1.0, 1.0, 1.0);
-
     var clicked = gl.getUniformLocation(gl.program, 'u_Clicked');
     gl.uniform1f(clicked, 0);
-
     draw();
 };
 
-//JQuery to listen to mousedown events
+var todraw = false;
+var tx, ty; //temp vars
+//listen to mousedown events
 $(c).mousedown(function(event) { 
     switch (event.which) {
-        case 1: //Left click for red tree
-            var found = false;
+        case 1: //Left click 
             var x = event.clientX;
             var y = event.clientY;
             var rect = event.target.getBoundingClientRect();
             var x_in_canvas = x - rect.left, y_in_canvas = rect.bottom - y;
-            // Read pixel at the clicked position
             var pixels = new Uint8Array(4); // Array for storing the pixel value
             var clicked = gl.getUniformLocation(gl.program, 'u_Clicked');
             gl.uniform1f(clicked, 1); // pass true to clicked
             draw();
-            gl.readPixels(x_in_canvas, y_in_canvas, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+            gl.readPixels(x_in_canvas, y_in_canvas, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels); 
             var i = Math.round(pixels[0]/5);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             gl.uniform1f(clicked, 0); //false to clicked;
@@ -161,20 +196,16 @@ $(c).mousedown(function(event) {
             y = (c.height/2 - (y - rect.top))/(c.height/2);
             if (prev == -1){ //if nothing selected
                 if(pixels[0] == 255 && pixels[1] == 255 && pixels[2] == 255){ // if white clicked, push new tree
-                    clicks.push(x,y);
-                    colors.push("red");
-                    selected.push(0);
-                    scale.push(1.0);
-                    translated.push(0.0,0.0,0.0);
-                    rotated.push(0,0);
-                    sphereSelected = false;
+                    todraw = true;
+                    tx = x; // temp vars to store and push during mouseup
+                    ty = y;
                 }
                 else { // not white, color detected, select a tree.
                     if ( i > 0 && i < 51){ //dont select tree when sphere is clicked
                         selected[i - 1] = 1;
                         prev = i - 1;
                         sphereSelected = false;
-                        console.log("tree " + i + " selected");
+                        // console.log("tree " + i + " selected");
                         break;
                     }
                     else { //  i == 51, sphere is selected/notslected
@@ -183,7 +214,7 @@ $(c).mousedown(function(event) {
                     }
                 }
             }
-            else if (prev > -1){
+            if (prev > -1 || sphereSelected){ //deselect
                 if (pixels[0] == 255 && pixels[1] == 255 && pixels[2] == 255){
                     selected[prev] = 0;
                     prev = -1;
@@ -193,6 +224,7 @@ $(c).mousedown(function(event) {
             break;
             //middle mouse button : z translation
         case 2: 
+                todraw = false;
                 mid = true;
             break;
         case 3: //Right click for blue tree
@@ -227,27 +259,55 @@ $(c).mousedown(function(event){
     firstx = event.clientX;
     firsty = event.clientY;
 });
+
 //handles double click
-// var o = 0;
-$(c).dblclick(function() {
-    // console.log("%d", ++o);
-    if (prev != -1){
-        var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
-        var viewMatrix = new Matrix4();
-        // for (var i = 0; i < 360; i++){
-            viewMatrix.setLookAt(0,0,0, clicks[prev * 2] + translated[prev * 2], clicks[prev * 2 + 1] + translated[prev * 2 + 1], translated[prev * 2 + 2], 0,0,1);
-            gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
-            draw();
-        // }
-    }
-});
+// $(c).dblclick(function() {
+//     // console.log("%d", ++o);
+//     if (prev != -1){
+//         var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
+//         var viewMatrix = new Matrix4();
+//         for (var i = 0; i < 360; i+=6){
+//             var x = Math.cos(i * Math.PI / 180) * 300;
+//             var y = Math.sin(i * Math.PI / 180) * 300;
+//             console.log(x,y);
+//             viewMatrix.setLookAt(clicks[prev * 2] * 200 + translated[prev * 2], clicks[prev * 2 + 1] * 200 + translated[prev * 2 + 1], translated[prev * 2 + 2],x,y,100,0,1,0);
+//             gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+//             draw();
+//         }
+//     }
+// });
 
 //listen to mouse ups, calculate distance
 $(c).mouseup(function(event){
     var x,y;
     x = event.clientX - firstx;
     y = firsty - event.clientY;
-    if(prev != -1){
+    if (prev == -1 && x == 0 && y == 0 && todraw){ //nothing selected, no movement, draw red tree
+        clicks.push(tx,ty);
+        colors.push("red");
+        selected.push(0);
+        scale.push(1.0);
+        translated.push(0.0,0.0,0.0);
+        rotated.push(0,0);
+        sphereSelected = false;
+        todraw = false;
+        draw();
+    }
+    else if(mid == false && !sphereSelected && prev == -1 && !(x == 0 && y == 0)){ // nothing selected, movement, pan camera
+        var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
+        var viewMatrix = new Matrix4();
+        eyeX += x / 2;
+        eyeY += y / 2;
+        if (document.getElementById("mode").innerHTML ==  "Top"){
+            viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ - movementZ, 100), eyeX, eyeY, 0, 0, 1, 0);
+        }
+        else {
+            viewMatrix.setLookAt(eyeX, eyeY - 200 + movementY, eyeZ, eyeX, eyeY + movementY, 0, 0, 1, 0);
+        }
+        gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+        draw();
+    }
+    else if(prev != -1){ // something is selected... translate tree
         if (x == 0 && y  == 0){ // no translation
             right = false;
             mid = false;
@@ -255,14 +315,12 @@ $(c).mouseup(function(event){
         else {
             if (mid == true){
                 translated[ prev * 3 + 2] += 1.1 * y / 2;
-                mid = false;
             }
             else if (right == true){
                 //vertical is around X axis
                 //horizontal is around Z axis
                 rotated[prev * 2] += x / 5;
                 rotated[prev * 2 + 1] +=  y / 5;
-                right = false;
             }
             else {
                 translated[ prev * 3] += 1.1 * x / 2;
@@ -278,7 +336,6 @@ $(c).mouseup(function(event){
         else {
             if (mid == true) {
                 Lz += 1.1 * y/2;
-                mid = false;
             }
             else {
                 Lx += 1.1 * x/2;
@@ -287,33 +344,84 @@ $(c).mouseup(function(event){
         }
         draw();
     }
+    mid = false;
+    right = false;
 }); 
 
 //JQuery to listen to scroll events 
 $(window).bind('mousewheel', function(event) {
-    for (var i = 0; i < selected.length; i++){
-        if(selected[i] == 1){
-            if (event.originalEvent.wheelDelta >= 0) { //increase object
-                if ( S  >=  3.0){
-                    S = 3.0;
-                }
-                else{
-                    S = S + 0.25;
-                    scale[i] = S;
-                    draw();
-                }
+    sphereSelected = false;
+    if (prev != -1){
+        if (event.originalEvent.wheelDelta >= 0) { //increase object
+            if ( S  >=  3.0){
+                S = 3.0;
             }
-            else { //decrease the object
-                if ( S  <=  0.5){
-                    S = 0.5;
-                }
-                else{
-                    S = S - 0.25;
-                    scale[i] = S;
-                    draw();
-                }
+            else{
+                S = S + 0.25;
+                scale[prev] = S;
+                draw();
             }
         }
+        else { //decrease the object
+            if ( S  <=  0.5){
+                S = 0.5;
+            }
+            else{
+                S = S - 0.25;
+                scale[prev] = S;
+                draw();
+            }
+        }
+    }
+
+    else if (mid == true && prev == -1 && !sphereSelected){ //handle moving camera in or out
+        var viewMatrix = new Matrix4();
+        var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
+        let mode = document.getElementById("mode").innerHTML;
+        if (event.originalEvent.wheelDelta >= 0) { //decrease object
+
+            if (mode == "Top"){
+                movementZ -= 25;
+                viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ - movementZ, 100), eyeX, eyeY, 0, 0, 1, 0);
+            }
+            else {
+                movementY -= 25;
+                viewMatrix.setLookAt(eyeX, eyeY - 200 + movementY, eyeZ, eyeX, eyeY + movementY, 0, 0, 1, 0);
+            }
+        }
+        else {
+            if (mode == "Top"){
+                movementZ += 25;
+                viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ - movementZ, 100), eyeX, eyeY, 0, 0, 1, 0);
+            }
+            else {
+                movementY += 25;
+                viewMatrix.setLookAt(eyeX, eyeY - 200 + movementY, eyeZ, eyeX, eyeY + movementY, 0, 0, 1, 0);
+            }
+        }
+
+        gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+        draw();
+    }
+    else if(prev == -1 && mid == false && !sphereSelected){ //zoom in on screen
+        var u_ProjMatrix = gl.getUniformLocation(gl.program, 'u_ProjMatrix');
+        var projMatrix = new Matrix4();
+        if (event.originalEvent.wheelDelta >= 0) { //decrease object
+            if (zoom < 114) {
+                zoom += 6;
+            }
+        }
+        else {
+            if (zoom > -54) {
+                zoom -= 6;
+            }
+        }
+        proj = true;
+        let x = document.getElementById("proj");
+        x.innerHTML = "Perspective";
+        projMatrix.setPerspective(90 + zoom, c.width/c.height, 1, 2000);
+        gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
+        draw();
     }
 });
 
@@ -482,24 +590,24 @@ function draw() {
 //handles the toggle camera button
 function toggleCamera(){
     let mode = document.getElementById("mode").innerHTML;
-    if (mode == "Eye Point: (0, 0, 1)"){
-       document.getElementById("mode").innerHTML = "Eye Point: (0, -1, 0.75)";
+    if (mode == "Top"){
+       document.getElementById("mode").innerHTML = "Side";
         // Get the storage location of u_ViewMatrix
         var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
         // Set the matrix to be used for to set the camera view
         var viewMatrix = new Matrix4();
-        viewMatrix.setLookAt(0, -400, 250, 0, 0, 0, 0, 1, 0);
+        viewMatrix.setLookAt(eyeX, eyeY - 200 + movementY, eyeZ, eyeX, eyeY + movementY, 0, 0, 1, 0);
         // Set the view matrix
         gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
 
     }
     else {
-       document.getElementById("mode").innerHTML = "Eye Point: (0, 0, 1)";
+       document.getElementById("mode").innerHTML = "Top";
        // Get the storage location of u_ViewMatrix
        var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
        // Set the matrix to be used for to set the camera view
        var viewMatrix = new Matrix4();
-       viewMatrix.setLookAt(0, 0, 300, 0, 0, 0, 0, 1, 0);
+       viewMatrix.setLookAt(eyeX, eyeY, Math.max(eyeZ - movementZ, 100), eyeX, eyeY, 0, 0, 1, 0);
        // Set the view matrix
        gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
     }
@@ -549,9 +657,9 @@ function toggleProjection() {
     let x = document.getElementById("proj");
     if ( proj == false ){
         proj = true;
-        x.innerHTML = "Perspective"
+        x.innerHTML = "Perspective";
         var projMatrix = new Matrix4();
-        projMatrix.setPerspective(60, c.width/c.height, 50, 2000)
+        projMatrix.setPerspective(90 + zoom, c.width/c.height, 1, 2000)
         gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
         draw();
     }
@@ -791,7 +899,7 @@ function save() {
     if (proj == true){
         str += "p"
     }
-    if (document.getElementById("mode").innerHTML != "Eye Point: (0, 0, 1)"){
+    if (document.getElementById("mode").innerHTML != "Top"){
         str+="c"
     }
     var htmlContent = [str];
@@ -809,46 +917,6 @@ function drawSphere() { // Create a sphere
 
     var glossiness = gl.getUniformLocation(gl.program, 'glossiness');
     gl.uniform1f(glossiness, 1);
-
-    var SPHERE_DIV = 13;
-    var i, ai, si, ci;
-    var j, aj, sj, cj;
-    var p1, p2;
-  
-    var positions = [];
-    var indices2 = [];
-  
-    // Generate coordinates
-    for (j = 0; j <= SPHERE_DIV; j++) {
-      aj = j * Math.PI / SPHERE_DIV;
-      sj = Math.sin(aj);
-      cj = Math.cos(aj);
-      for (i = 0; i <= SPHERE_DIV; i++) {
-        ai = i * 2 * Math.PI / SPHERE_DIV;
-        si = Math.sin(ai);
-        ci = Math.cos(ai);
-  
-        positions.push(si * sj);  // X
-        positions.push(cj);   // Y
-        positions.push(ci * sj);  // Z
-      }
-    }
-  
-    // Generate indices
-    for (j = 0; j < SPHERE_DIV; j++) {
-      for (i = 0; i < SPHERE_DIV; i++) {
-        p1 = j * (SPHERE_DIV+1) + i;
-        p2 = p1 + (SPHERE_DIV+1);
-  
-        indices2.push(p1);
-        indices2.push(p2);
-        indices2.push(p1 + 1);
-  
-        indices2.push(p1 + 1);
-        indices2.push(p2);
-        indices2.push(p2 + 1);
-      }
-    }
 
     if (!initArrayBuffer(gl, 'a_Position', positions, 3, gl.FLOAT)) return -1;
     if (!initArrayBuffer(gl, 'a_Normal', positions, 3, gl.FLOAT))  return -1;
@@ -879,23 +947,17 @@ function drawSphere() { // Create a sphere
     gl.uniformMatrix4fv(u_ScaleMatrix, false, scaleMatrix);
 
     //Rotations  -- no rotations.
-    var rotateZMatrix = new Float32Array([ 
+    var iMatrix = new Float32Array([ 
         1.0,  0.0,  0.0,  0.0,
         0.0,  1.0,  0.0,  0.0,
         0.0,  0.0,  1.0,  0.0,
         0.0,  0.0,  0.0,  1.0
     ]);
     var u_RotateZMatrix = gl.getUniformLocation(gl.program, 'u_RotateZMatrix');
-    gl.uniformMatrix4fv(u_RotateZMatrix, false, rotateZMatrix);
+    gl.uniformMatrix4fv(u_RotateZMatrix, false, iMatrix);
 
-    var rotateXMatrix = new Float32Array([
-        1.0,  0.0,  0.0,  0.0,
-        0.0,  1.0,  0.0,  0.0,
-        0.0,  0.0,  1.0,  0.0,
-        0.0,  0.0,  0.0,  1.0
-    ]);
     var u_RotateXMatrix = gl.getUniformLocation(gl.program, 'u_RotateXMatrix');
-    gl.uniformMatrix4fv(u_RotateXMatrix, false, rotateXMatrix);
+    gl.uniformMatrix4fv(u_RotateXMatrix, false, iMatrix);
 
     // Translation
     var u_Translation = gl.getUniformLocation(gl.program, 'u_TranslateMatrix');
