@@ -7,7 +7,7 @@ var selected = []; //array to track selected tree;
 var translated = []; //array to store translation values;
 var rotated = []; //array to store rotation values
 var scale = []; //store scale values
-var eyeX = 0, eyeY = 0, eyeZ = 150;
+var eyeX = 0, eyeY = 0, eyeZ = 50, eyeZ2 = 150;
 var wire = 0; // boolean vars to track toggle buttons
 var temp = false; //normal button
 var proj = false; // projection button
@@ -21,6 +21,7 @@ var positions = []; // sphere positions
 var indices2 = []; //sphere indices
 var movementY = 0;
 var movementZ = 0;
+
 window.addEventListener("contextmenu", function(e) {
     e.preventDefault();
   }, false);
@@ -160,7 +161,7 @@ function main() {
 
     // Set the matrix to be used for to set the camera view
     var viewMatrix = new Matrix4();
-    viewMatrix.setLookAt(eyeX,eyeY,eyeZ,eyeX,eyeY,0,0,1,0);
+    viewMatrix.setLookAt(eyeX,eyeY,eyeZ2,eyeX,eyeY,0,0,1,0);
     // Set the view matrix
     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
     var projMatrix = new Matrix4();
@@ -261,21 +262,21 @@ $(c).mousedown(function(event){
 });
 
 //handles double click
-// $(c).dblclick(function() {
-//     // console.log("%d", ++o);
-//     if (prev != -1){
-//         var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
-//         var viewMatrix = new Matrix4();
-//         for (var i = 0; i < 360; i+=6){
-//             var x = Math.cos(i * Math.PI / 180) * 300;
-//             var y = Math.sin(i * Math.PI / 180) * 300;
-//             console.log(x,y);
-//             viewMatrix.setLookAt(clicks[prev * 2] * 200 + translated[prev * 2], clicks[prev * 2 + 1] * 200 + translated[prev * 2 + 1], translated[prev * 2 + 2],x,y,100,0,1,0);
-//             gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
-//             draw();
-//         }
-//     }
-// });
+$(c).dblclick(function() {
+    // console.log("%d", ++o);
+    if (prev != -1){
+        var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
+        var viewMatrix = new Matrix4();
+        for (var i = 0; i < 360; i+=6){
+            var x = Math.cos(i * Math.PI / 180) * 400;
+            var y = Math.sin(i * Math.PI / 180) * 400;
+            console.log(x,y, prev, clicks);
+            viewMatrix.setLookAt(clicks[prev * 2] * 200 + translated[prev * 2], clicks[prev * 2 + 1] * 200 + translated[prev * 2 + 1], translated[prev * 2 + 2],x,y,0,0,0,1);
+            gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+            draw();
+        }
+    }
+});
 
 //listen to mouse ups, calculate distance
 $(c).mouseup(function(event){
@@ -299,7 +300,7 @@ $(c).mouseup(function(event){
         eyeX += x / 2;
         eyeY += y / 2;
         if (document.getElementById("mode").innerHTML ==  "Top"){
-            viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ - movementZ, 100), eyeX, eyeY, 0, 0, 1, 0);
+            viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ2 - movementZ, 0), eyeX, eyeY, 0, 0, 1, 0);
         }
         else {
             viewMatrix.setLookAt(eyeX, eyeY - 200 + movementY, eyeZ, eyeX, eyeY + movementY, 0, 0, 1, 0);
@@ -382,7 +383,7 @@ $(window).bind('mousewheel', function(event) {
 
             if (mode == "Top"){
                 movementZ -= 25;
-                viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ - movementZ, 100), eyeX, eyeY, 0, 0, 1, 0);
+                viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ2 - movementZ, 0), eyeX, eyeY, 0, 0, 1, 0);
             }
             else {
                 movementY -= 25;
@@ -392,7 +393,7 @@ $(window).bind('mousewheel', function(event) {
         else {
             if (mode == "Top"){
                 movementZ += 25;
-                viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ - movementZ, 100), eyeX, eyeY, 0, 0, 1, 0);
+                viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ2 - movementZ, 0), eyeX, eyeY, 0, 0, 1, 0);
             }
             else {
                 movementY += 25;
@@ -412,7 +413,7 @@ $(window).bind('mousewheel', function(event) {
             }
         }
         else {
-            if (zoom > -54) {
+            if (zoom > -60) {
                 zoom -= 6;
             }
         }
@@ -607,7 +608,7 @@ function toggleCamera(){
        var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
        // Set the matrix to be used for to set the camera view
        var viewMatrix = new Matrix4();
-       viewMatrix.setLookAt(eyeX, eyeY, Math.max(eyeZ - movementZ, 100), eyeX, eyeY, 0, 0, 1, 0);
+       viewMatrix.setLookAt(eyeX, eyeY, Math.max(eyeZ2 - movementZ, 0), eyeX, eyeY, 0, 0, 1, 0);
        // Set the view matrix
        gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
     }
@@ -721,29 +722,29 @@ function initArrayBuffer (gl, attribute, data, num, type) {
     for(var k =0, i = 0; i < 12; i++, k +=2){ // 72 verticies for the 24 triangles, generates 2 triangles each loop
         x2 = x1 + (scale/2)*.5 * Math.cos((i/12) * 2 * Math.PI);
         y2 = y1 + (scale/2)*.5 * Math.sin((i/12) * 2 * Math.PI);
-        z2 = z1 + (scale/10)* 10;
+        z2 = z1;
         coords.push(x2,y2,z2); //pushes the first point of smaller upper circle CCW
 
         x3 = x + (scale)*1 * Math.cos((i/12) * 2 * Math.PI);
         y3 = y + (scale)*1 * Math.sin((i/12) * 2 * Math.PI);
-        z3 = z + 0;
+        z3 = z ;
         coords.push(x3,y3,z3); //pushes the corresponding angle bottom circle CCW
 
         x4 = x + (scale)*1 * Math.cos(((i + 1)/12) * 2 * Math.PI); //next point
         y4 = y + (scale)*1 * Math.sin(((i + 1)/12) * 2 * Math.PI);
-        z4 = z + 0;
+        z4 = z;
         coords.push(x4,y4,z4);
 
         x5 = x1 + (scale/2)*.5 * Math.cos(((i + 1)/12) * 2 * Math.PI); //next point
         y5 = y1+ (scale/2)*.5 * Math.sin(((i + 1)/12) * 2 * Math.PI); //next point
-        z5 = z1 + (scale/10)*10;
+        z5 = z1;
 
         coords.push(x5,y5,z5);
         coords.push(x2,y2,z2); //CCW 
         coords.push(x4,y4,z4);
     }
     if (wire == 1) { // last coord for wireframe,
-        coords.push(x1 + (scale/2)*.5, y1, z1 + (scale/10)*10);
+        coords.push(x1 + (scale/2)*.5, y1, z1);
     }
 
     return coords;
@@ -937,22 +938,10 @@ function drawSphere() { // Create a sphere
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices2), gl.STATIC_DRAW);
 
     //Scaling factor
-    var scaleMatrix = new Float32Array([
-        5,   0.0,  0.0,  0.0,
-        0.0,  5,   0.0,  0.0,
-        0.0,  0.0,  5,  0.0,
-        0.0,  0.0,  0.0,  1.0
-    ]);
-    var u_ScaleMatrix = gl.getUniformLocation(gl.program, 'u_ScaleMatrix');
-    gl.uniformMatrix4fv(u_ScaleMatrix, false, scaleMatrix);
+    var u_ScaleMatrix2 = gl.getUniformLocation(gl.program, 'u_ScaleMatrix');
+    gl.uniformMatrix4fv(u_ScaleMatrix2, false, scaleMatrix2);
 
     //Rotations  -- no rotations.
-    var iMatrix = new Float32Array([ 
-        1.0,  0.0,  0.0,  0.0,
-        0.0,  1.0,  0.0,  0.0,
-        0.0,  0.0,  1.0,  0.0,
-        0.0,  0.0,  0.0,  1.0
-    ]);
     var u_RotateZMatrix = gl.getUniformLocation(gl.program, 'u_RotateZMatrix');
     gl.uniformMatrix4fv(u_RotateZMatrix, false, iMatrix);
 
@@ -971,4 +960,17 @@ function drawSphere() { // Create a sphere
     gl.drawElements(gl.TRIANGLES, indices2.length, gl.UNSIGNED_SHORT, 0);
     gl.disable(gl.CULL_FACE); 
   }
+
+  var iMatrix = new Float32Array([ 
+    1.0,  0.0,  0.0,  0.0,
+    0.0,  1.0,  0.0,  0.0,
+    0.0,  0.0,  1.0,  0.0,
+    0.0,  0.0,  0.0,  1.0
+]);
+var scaleMatrix2 = new Float32Array([
+    5,   0.0,  0.0,  0.0,
+    0.0,  5,   0.0,  0.0,
+    0.0,  0.0,  5,  0.0,
+    0.0,  0.0,  0.0,  1.0
+]);
   
