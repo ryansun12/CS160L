@@ -22,7 +22,13 @@ var indices2 = []; //sphere indices
 var movementY = 0;
 var movementZ = 0;
 
-window.addEventListener("contextmenu", function(e) {
+$(document).keydown(function(e){
+    if( e.which === 90 && e.ctrlKey ||e.which === 90 && e.metaKey){
+       deletePrevTree();
+    }          
+  });
+
+c.addEventListener("contextmenu", function(e) {
     e.preventDefault();
   }, false);
 
@@ -31,6 +37,8 @@ var VSHADER_SOURCE =
   'uniform bool u_Clicked;\n' + // Mouse is pressed   
   'uniform vec4 u_idColor;\n' +  
   'uniform mat4 u_ProjMatrix;\n' +
+  'attribute vec2 a_TexCoord;\n' +
+  'varying vec2 v_TexCoord;\n'+
   'uniform mat4 u_RotateZMatrix;\n' +
   'uniform mat4 u_RotateXMatrix;\n' +
   'uniform mat4 u_ScaleMatrix;\n' +
@@ -48,7 +56,7 @@ var VSHADER_SOURCE =
   'uniform vec3 Ks;\n' +  // Specular constant
   'varying vec4 v_Color;\n' +
   'void main() {\n' +
-  ' gl_Position = u_ProjMatrix * u_ViewMatrix * (a_Position *  u_RotateZMatrix * u_RotateXMatrix * u_ScaleMatrix  +  u_TranslateMatrix);\n' +
+  ' gl_Position = u_ProjMatrix * u_ViewMatrix * (a_Position * u_RotateZMatrix * u_RotateXMatrix * u_ScaleMatrix + u_TranslateMatrix);\n' +
     // Calculate world coordinate of vertex
     '  vec4 vertexPosition = a_Position *  u_RotateZMatrix * u_RotateXMatrix * u_ScaleMatrix + u_TranslateMatrix;\n' +
     // Calculate the light direction and make it 1.0 in length
@@ -94,12 +102,16 @@ var VSHADER_SOURCE =
 var FSHADER_SOURCE =
   'precision mediump float;\n' +
   'varying vec4 v_Color;\n' + 
+  'uniform sampler2D u_Sampler;\n' +
+  'varying vec2 v_TexCoord;\n'+
   'void main() {\n' +
   '  gl_FragColor = v_Color; \n' +
   '}\n';
 
 //initialize webGL 
 function main() {
+
+    // Position of eye point (world coordinates)
     for (var i = 0; i < 72; i += 3) {
         indices.push(i, i+1, i+2);
     }
@@ -145,6 +157,7 @@ function main() {
         console.log('Failed to initialize shaders.');
         return; 
     }
+
     //Get storage location of several variables;
     var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
     var u_ProjMatrix = gl.getUniformLocation(gl.program, 'u_ProjMatrix');
@@ -154,7 +167,7 @@ function main() {
 
     // Set the light direction (in the world coordinate)
     gl.uniform3f(u_LightColor, 1.0,1.0,1.0);
-    var lightDirection = new Vector3([1.0,1.0,1.0]);
+    var lightDirection = new Vector3([-1.0,-1.0,1.0]);
     lightDirection.normalize();     // Normalize
     gl.uniform3fv(u_LightDirection, lightDirection.elements);
     gl.uniform3f(u_LightPosition, Lx,Ly,Lz);
@@ -261,23 +274,6 @@ $(c).mousedown(function(event){
     firsty = event.clientY;
 });
 
-//handles double click
-$(c).dblclick(function() {
-    // console.log("%d", ++o);
-    if (prev != -1){
-        var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
-        var viewMatrix = new Matrix4();
-        for (var i = 0; i < 360; i+=6){
-            var x = Math.cos(i * Math.PI / 180) * 400;
-            var y = Math.sin(i * Math.PI / 180) * 400;
-            console.log(x,y, prev, clicks);
-            viewMatrix.setLookAt(clicks[prev * 2] * 200 + translated[prev * 2], clicks[prev * 2 + 1] * 200 + translated[prev * 2 + 1], translated[prev * 2 + 2],x,y,0,0,0,1);
-            gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
-            draw();
-        }
-    }
-});
-
 //listen to mouse ups, calculate distance
 $(c).mouseup(function(event){
     var x,y;
@@ -298,12 +294,16 @@ $(c).mouseup(function(event){
         var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
         var viewMatrix = new Matrix4();
         eyeX += x / 2;
-        eyeY += y / 2;
         if (document.getElementById("mode").innerHTML ==  "Top"){
+
+        eyeY += y / 2;
             viewMatrix.setLookAt(eyeX,eyeY,Math.max(eyeZ2 - movementZ, 0), eyeX, eyeY, 0, 0, 1, 0);
         }
         else {
-            viewMatrix.setLookAt(eyeX, eyeY - 200 + movementY, eyeZ, eyeX, eyeY + movementY, 0, 0, 1, 0);
+        if (eyeZ + y/2 >= 0) {
+            eyeZ += y / 2;
+        }
+        viewMatrix.setLookAt(eyeX, eyeY - 200 + movementY, eyeZ, eyeX, eyeY + movementY, 0, 0, 1, 0);
         }
         gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
         draw();
@@ -350,7 +350,7 @@ $(c).mouseup(function(event){
 }); 
 
 //JQuery to listen to scroll events 
-$(window).bind('mousewheel', function(event) {
+$(c).bind('mousewheel', function(event) {
     sphereSelected = false;
     if (prev != -1){
         if (event.originalEvent.wheelDelta >= 0) { //increase object
@@ -443,7 +443,7 @@ function draw() {
     for (var i = 0, j = 0; i < colors.length; i++, j+=2) {
         var r_id = (i+1)/51;
         var idColor = gl.getUniformLocation(gl.program, 'u_idColor'); 
-        gl.uniform4f(idColor, r_id, 1.0, 0.0, 1.0);
+        gl.uniform4f(idColor, r_id, 0.2, 0.0, 1.0);
         //Scaling factor
         var sc = scale[i];
         var scaleMatrix = new Float32Array([
@@ -489,6 +489,7 @@ function draw() {
         }
         else { // else treeR6
             newTree = treeR6;
+
         }
         for( var index = 0; index < newTree.length; index+=6){ // for each branch, draw cylinder 
             var t = cylinderVertices(newTree[index], newTree[index+1], newTree[index+2], newTree[index+3],newTree[index+4], newTree[index+5]);
@@ -517,6 +518,7 @@ function draw() {
                     r = 0.0;
                     g = 0.0;
                     b = 1.0;
+                    // b = 0.0;
                 }
                 if ( selected[i] == 1) { //the green ones
                     r = 0.0;
@@ -840,6 +842,15 @@ function fileReader(input){
                 }
             }
         }
+        // else if (s.charAt(i) == ":") {
+        //     Lx = parseFloat(temp);
+        // }
+        // else if (s.charAt(i) == ";") {
+        //     Ly = parseFloat(temp);
+        // }
+        // else if (s.charAt(i) == "&") {
+        //     Lz = parseFloat(temp);
+        // }
         else if (s.charAt(i) == "r") {
         colors.push("red")
         }
@@ -878,6 +889,7 @@ $(function(){
 //Write to text file the current click points and options
 function save() {
     var str = "";
+    // str += Lx + ":" + Ly + ";" + Lz + "&";
     for (var i = 0, j = 0, k = 0 ; i < colors.length; i++, j += 2, k+=3) {
         if (colors[i] == "red") {
             str += "r";
@@ -961,7 +973,7 @@ function drawSphere() { // Create a sphere
     gl.disable(gl.CULL_FACE); 
   }
 
-  var iMatrix = new Float32Array([ 
+var iMatrix = new Float32Array([ 
     1.0,  0.0,  0.0,  0.0,
     0.0,  1.0,  0.0,  0.0,
     0.0,  0.0,  1.0,  0.0,
@@ -973,4 +985,3 @@ var scaleMatrix2 = new Float32Array([
     0.0,  0.0,  5,  0.0,
     0.0,  0.0,  0.0,  1.0
 ]);
-  
